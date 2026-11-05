@@ -85,7 +85,7 @@ function showDetail(){
  camera.up.set(0,1,0);controls.target.set(0,0,0);const wideView=id===2?8:1;camera.position.set(.005,.011,.026).multiplyScalar(wideView);controls.minDistance=.002;controls.maxDistance=.09*wideView;controls.maxPolarAngle=1.35;controls.update();
  applyDisplay();document.querySelector('#story').textContent=story+(id===2?'　広域16度四方（赤道で約3.7km間隔）':'　詳細地形（赤道で約460m間隔）');
 }
-function view(local){if(local){showDetail();return;}if(detailMesh)detailMesh.visible=false;terrainTools.hidden=true;globe.visible=true;const [lat,lon,story]=places[+sel.value],a=lat*Math.PI/180,b=lon*Math.PI/180,n=new T.Vector3(-Math.cos(a)*Math.cos(b),Math.sin(a),Math.cos(a)*Math.sin(b)),east=new T.Vector3(Math.sin(b),0,Math.cos(b));document.querySelector('#story').textContent=story;controls.target.copy(local?n.clone().multiplyScalar(1+height(lat,lon)/3396000):new T.Vector3());camera.up.copy(local?n:new T.Vector3(0,1,0));camera.position.copy(local?controls.target.clone().addScaledVector(n,.24).addScaledVector(east,.33):n.clone().multiplyScalar(3.8));controls.maxPolarAngle=local?1.15:Math.PI;controls.minDistance=local?.14:1.16;controls.maxDistance=local?.85:6;controls.update();applyDisplay();}
+function view(local){tiltActive=false;document.querySelector('#tiltView').setAttribute('aria-pressed','false');if(local){showDetail();return;}if(detailMesh)detailMesh.visible=false;terrainTools.hidden=true;globe.visible=true;const [lat,lon,story]=places[+sel.value],a=lat*Math.PI/180,b=lon*Math.PI/180,n=new T.Vector3(-Math.cos(a)*Math.cos(b),Math.sin(a),Math.cos(a)*Math.sin(b)),east=new T.Vector3(Math.sin(b),0,Math.cos(b));document.querySelector('#story').textContent=story;controls.target.copy(local?n.clone().multiplyScalar(1+height(lat,lon)/3396000):new T.Vector3());camera.up.copy(local?n:new T.Vector3(0,1,0));camera.position.copy(local?controls.target.clone().addScaledVector(n,.24).addScaledVector(east,.33):n.clone().multiplyScalar(3.8));controls.maxPolarAngle=local?1.15:Math.PI;controls.minDistance=local?.14:1.16;controls.maxDistance=local?.85:6;controls.update();applyDisplay();}
 
 const topo=document.querySelector('#topo'),gridToggle=document.querySelector('#grid'),namesToggle=document.querySelector('#showLabels'),autoToggle=document.querySelector('#auto');
 const graticule=new T.Group();scene.add(graticule);
@@ -113,6 +113,7 @@ const poleLabels=[{y:1.28,name:'N · 北極'},{y:-1.28,name:'S · 南極'}].map(
 function updateAxis(){axisGroup.visible=globe.visible&&axisToggle.checked;for(const {el,pos,name} of poleLabels){const q=pos.clone().project(camera);el.textContent=name+(pos.dot(camera.position)<0?'（裏側）':'');el.hidden=!axisGroup.visible||Math.abs(q.z)>1||Math.abs(q.x)>1||Math.abs(q.y)>1;el.style.left=(q.x+1)*host.clientWidth/2+'px';el.style.top=(1-q.y)*host.clientHeight/2+'px';}}
 
 
+let tiltActive=false;
 const orbitToggle=document.querySelector('#orbitPlane'),tiltGroup=new T.Group();scene.add(tiltGroup);
 const tilt=25.19*Math.PI/180,orbitNormal=new T.Vector3(Math.sin(tilt),Math.cos(tilt),0);
 const plane=new T.Mesh(new T.CircleGeometry(1.65,120),new T.MeshBasicMaterial({color:0x8298ba,transparent:true,opacity:.10,side:T.DoubleSide,depthWrite:false}));plane.quaternion.setFromUnitVectors(new T.Vector3(0,0,1),orbitNormal);tiltGroup.add(plane);
@@ -124,8 +125,8 @@ const arc=[];for(let i=0;i<=40;i++){const a=tilt*i/40;arc.push(new T.Vector3(Mat
 tiltLine([new T.Vector3(0,1.22,0),new T.Vector3(0,1.54,0)],0xb9d7df,.75);
 const tiltLabels=[['25.2°',new T.Vector3(Math.sin(tilt/2)*1.54,Math.cos(tilt/2)*1.54,0)],['公転面に垂直',orbitNormal.clone().multiplyScalar(1.77)],['公転面',new T.Vector3(1.70,0,0).applyQuaternion(plane.quaternion)]] .map(([name,pos])=>{const el=document.createElement('span');el.className='poleLabel';el.textContent=name;host.append(el);return {el,pos};});
 function updateTilt(){tiltGroup.visible=globe.visible&&orbitToggle.checked;document.querySelector('#tiltNote').hidden=!tiltGroup.visible;for(const {el,pos} of tiltLabels){const q=pos.clone().project(camera);el.hidden=!tiltGroup.visible||Math.abs(q.x)>1||Math.abs(q.y)>1||Math.abs(q.z)>1;el.style.left=(q.x+1)*host.clientWidth/2+'px';el.style.top=(1-q.y)*host.clientHeight/2+'px';}}
-function tiltView(){view(false);orbitToggle.checked=true;axisToggle.checked=true;autoToggle.checked=false;controls.autoRotate=false;camera.up.copy(orbitNormal);camera.position.set(0,.15,5.5);controls.target.set(0,0,0);controls.update();document.querySelector('#story').textContent='火星の自転軸と公転面。金色の弧が、公転面の垂直方向から約25.2°の傾きを示します。ドラッグで立体的な関係を確認できます。';}
-document.querySelector('#tiltView').onclick=tiltView;
+function tiltView(){view(false);tiltActive=true;document.querySelector('#tiltView').setAttribute('aria-pressed','true');orbitToggle.checked=true;axisToggle.checked=true;autoToggle.checked=false;controls.autoRotate=false;camera.up.copy(orbitNormal);camera.position.set(0,.15,5.5);controls.target.set(0,0,0);controls.update();document.querySelector('#story').textContent='火星の自転軸と公転面。金色の弧が、公転面の垂直方向から約25.2°の傾きを示します。ドラッグで立体的な関係を確認できます。';}
+document.querySelector('#tiltView').onclick=()=>{if(tiltActive){orbitToggle.checked=false;axisToggle.checked=false;view(false);}else{tiltView();}};
 
 sel.onchange=()=>{document.querySelector('#route').open=sel.value==='3';view(true);};document.querySelector('#global').onclick=()=>view(false);document.querySelector('#near').onclick=()=>view(true);view(false);
 new ResizeObserver(()=>{renderer.setSize(host.clientWidth,host.clientHeight);camera.aspect=host.clientWidth/host.clientHeight;camera.updateProjectionMatrix();}).observe(host);
